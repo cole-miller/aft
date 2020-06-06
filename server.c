@@ -3,7 +3,6 @@
 #include "raft.h"
 #include "server.h"
 
-#include <alloca.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -679,7 +678,7 @@ static void raft_candidate(struct raft_context *ctx, int client_fd, int persist_
     (void)persist_fd;
     (void)trans;
 
-    bool *received_from;
+    bool received_from[RAFT_MAX_SERVERS + 1];
     unsigned votes_received;
     raft_server_id i;
     struct pollfd poll_fds[2] = { { .fd = client_fd, .events = POLLIN },
@@ -691,10 +690,6 @@ static void raft_candidate(struct raft_context *ctx, int client_fd, int persist_
 
     raft_reset_timer();
 
-    // I use alloca here to avoid either declaring a variable-length array
-    // (apparently considered poor form) or calling malloc (and thus leaking
-    // memory if the candidate times out).
-    received_from = alloca((ctx->num_servers + 1) * sizeof(bool));
     for (i = 1; i <= ctx->num_servers; ++i)
         received_from[i] = false;
     received_from[ctx->my_id] = true;
@@ -796,18 +791,15 @@ static void raft_candidate(struct raft_context *ctx, int client_fd, int persist_
 static void raft_leader(struct raft_context *ctx, int client_fd, int persist_fd,
                         struct raft_transient *trans)
 {
-    raft_index *next_indices, *matched_indices;
+    raft_index next_indices[RAFT_MAX_SERVERS + 1], matched_indices[RAFT_MAX_SERVERS + 1];
     raft_server_id i;
     struct pollfd poll_fds[2] = { { .fd = client_fd, .events = POLLIN },
                                   { .fd = ctx->server_sock, .events = POLLIN } };
     bool committed_noop = false, reader_waiting = false;
     unsigned num_heard = 1;
-    bool *heard_from;
+    bool heard_from[RAFT_MAX_SERVERS + 1];
     uint8_t delayed_read[RAFT_READ_DATA_SIZE];
 
-    next_indices = alloca((ctx->num_servers + 1) * sizeof(raft_index));
-    matched_indices = alloca((ctx->num_servers + 1) * sizeof(raft_index));
-    heard_from = alloca((ctx->num_servers + 1) * sizeof(bool));
     for (i = 1; i <= ctx->num_servers; ++i) {
         // The initial setting of next_indices ensures we won't send entries
         // to other servers until we get a new one from a client or find that
@@ -1061,6 +1053,8 @@ static void raft_init_context(raft_server_id my_id, FILE *config,
         raft_fatal_error("bad format for number of servers or server ID");
     if (ctx->num_servers <= 1)
         raft_fatal_error("number of servers must be > 1");
+    if (ctx->num_servers > RAFT_MAX_SERVERS)
+        raft_fatal_error("too many servers!");
     if (ctx->my_id == 0 || ctx->my_id > ctx->num_servers)
         raft_fatal_error("server ID must be between 1 and number of servers");
 

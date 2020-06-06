@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+/* Maximum supported number of servers in a Raft cluster.
+ */
+#define RAFT_MAX_SERVERS 101
+
 /* Space available in a Raft log entry; the client can fill this space
  * however it wishes.
  */
