@@ -232,6 +232,14 @@ static void raft_alert_client(int client_fd, raft_server_response_type type, voi
     raft_log_client_response(type);
 }
 
+/* A wrapper around the client-provided apply_command callback.
+ */
+static void raft_ratify_entry(const struct raft_entry *ent)
+{
+    if (ent->type == RAFT_ENTRY_NORMAL)
+        apply_command(ent->data);
+}
+
 /*
  * Server-server communication routines.
  */
@@ -655,8 +663,7 @@ static void raft_follower(struct raft_context *ctx, int client_fd, int persist_f
                                 = MIN(contents->commit, persist->last_index);
                         for (j = trans->applied_index + 1; j <= trans->commit_index;
                              ++j) {
-                            if (persist->log[j].type != RAFT_ENTRY_NOOP)
-                                apply_command(persist->log[j].data);
+                            raft_ratify_entry(&(persist->log[j]));
                         }
                         trans->applied_index = trans->commit_index;
 
@@ -972,8 +979,7 @@ static void raft_leader(struct raft_context *ctx, int client_fd, int persist_fd,
                             // Apply the newly committed entries to our state machine.
                             // Also alert our client for entries from the current term.
                             for (jj = old_commit + 1; jj <= j; ++jj) {
-                                if (persist->log[jj].type == RAFT_ENTRY_NORMAL)
-                                    apply_command(persist->log[jj].data);
+                                raft_ratify_entry(&(persist->log[jj]));
                                 if (persist->log[jj].type == RAFT_ENTRY_NORMAL
                                     && persist->log[jj].term_added
                                         == persist->current_term)
