@@ -157,17 +157,6 @@ static void raft_log_client_response(raft_server_response_type type)
     fprintf(stderr, "OUT: CLIENT %s\n", raft_server_response_names[type]);
 }
 
-#ifdef UNRELIABLE
-static void raft_log_drop(void)
-{
-    struct sigaction saved;
-
-    block_sigalrm(&saved);
-    fprintf(stderr, "DROP\n");
-    unblock_sigalrm(&saved);
-}
-#endif
-
 /*
  * Client-server communication routines.
  */
@@ -596,14 +585,6 @@ static void raft_follower(struct raft_context *ctx, int client_fd, int persist_f
             raft_receive_message(ctx, &msg);
             raft_pause_timer(&saved);
 
-#ifdef UNRELIABLE
-            if (random() % RAFT_MESSAGE_DROP_PERIOD == 0) {
-                raft_log_drop();
-                raft_restore_timer(&saved);
-                continue;
-            }
-#endif
-
             // Candidates and leaders revert immediately to follower state
             // upon seeing a message with a newer term. If we're a follower already,
             // we might as well continue to process the current message after
@@ -765,14 +746,6 @@ static void raft_candidate(struct raft_context *ctx, int client_fd, int persist_
             raft_receive_message(ctx, &msg);
             raft_pause_timer(&saved); // note that candidates never reset their timers
 
-#ifdef UNRELIABLE
-            if (random() % RAFT_MESSAGE_DROP_PERIOD == 0) {
-                raft_log_drop();
-                raft_restore_timer(&saved);
-                continue; // wait for next message
-            }
-#endif
-
             // Revert to follower without processing the message further if we
             // see a term greater than our own. The message will eventually be
             // resent and we can process it from follower state. This way, we don't
@@ -915,13 +888,6 @@ static void raft_leader(struct raft_context *ctx, int client_fd, int persist_fd,
 
         if (poll_fds[1].revents & POLLIN) {
             raft_receive_message(ctx, &msg);
-
-#ifdef UNRELIABLE
-            if (random() % RAFT_MESSAGE_DROP_PERIOD == 0) {
-                raft_log_drop();
-                continue;
-            }
-#endif
 
             if (msg.sender_term > persist->current_term) {
                 persist->current_term = msg.sender_term;

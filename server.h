@@ -57,14 +57,6 @@ typedef uint16_t raft_entry_type;
 #define RAFT_PERSIST_INIT_PAGES 8
 #define RAFT_PERSIST_EXTEND_PAGES 1
 
-/* When this is set to N and UNRELIABLE is defined,
- * servers simulate "dropping" a random fraction 1/N of messages,
- * as though due to a lossy network.
- */
-#ifdef UNRELIABLE
-#define RAFT_MESSAGE_DROP_PERIOD 5
-#endif
-
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
