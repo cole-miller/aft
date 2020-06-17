@@ -1,0 +1,6 @@
+This project implements Raft, an algorithm for distributed consensus.
+
+A detailed description of the implementation is in
+[IMPLEMENTATION.pdf](IMPLEMENTATION.pdf). It's somewhat out of date since I've
+made changes since it was written, but remains largely accurate. Alterations are
+described in the Git log.
