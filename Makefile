@@ -1,3 +1,4 @@
+.POSIX:
 CC = clang
 CFLAGS = -Weverything \
 	 -Wno-missing-noreturn \
