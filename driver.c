@@ -2,6 +2,10 @@
 
 #include "raft.h"
 
+#define OPTPARSE_IMPLEMENTATION
+#define OPTPARSE_API static
+#include "optparse.h"
+
 #include <assert.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -256,8 +260,11 @@ static void usage(void)
 
 int main(int argc, char *argv[])
 {
-	enum raft_mode mode = RAFT_NORMAL_MODE;
+	(void)argc;
+
 	int opt;
+	struct optparse options;
+	enum raft_mode mode = RAFT_NORMAL_MODE;
 	char *server_id_str = NULL, *config_path = NULL, *persist_path = NULL,
 		 *seed_str = NULL;
 	unsigned server_id;
@@ -266,21 +273,22 @@ int main(int argc, char *argv[])
 	struct sigaction act;
 	pid_t pid;
 
-	while ((opt = getopt(argc, argv, "Ri:c:p:s:")) != -1) {
+	optparse_init(&options, argv);
+	while ((opt = optparse(&options, "Ri:c:p:s:")) != -1) {
 		switch (opt) {
 		case 'R':
 			mode = RAFT_RECOVER_MODE;
 			break;
 		case 'i':
-			server_id_str = optarg;
+			server_id_str = options.optarg;
 		case 'c':
-			config_path = optarg;
+			config_path = options.optarg;
 			break;
 		case 'p':
-			persist_path = optarg;
+			persist_path = options.optarg;
 			break;
 		case 's':
-			seed_str = optarg;
+			seed_str = options.optarg;
 			break;
 		default:
 			usage();
